@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:searchapp/models/Post.dart';
+import 'package:searchapp/models/post.dart';
+import 'package:searchapp/repo/post_repo.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,13 +39,28 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final PostRepo _postRepo = PostRepo();
   late TextEditingController textSearch;
-  late List<Post> listPost;
+  List<Post> listPosts = [];
+  List<Post> listPostsTemp = [];
 
   @override
   void initState() {
-    textSearch = TextEditingController();
+    initValue();
     super.initState();
+  }
+
+  void initValue() async {
+    textSearch = TextEditingController();
+    listPosts = await _postRepo.getPosts();
+  }
+
+  void searchPost(String id) async {
+    listPostsTemp = await _postRepo.getPosts(id: id);
+    setState(() {
+      listPosts.clear();
+      listPosts = listPostsTemp;
+    });
   }
 
   @override
@@ -56,10 +72,23 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             TextFormField(
               controller: textSearch,
-              decoration: InputDecoration(hintText: "Search"),
+              decoration: const InputDecoration(hintText: "Search"),
             ),
-            ElevatedButton(onPressed: onPressed, child: child)
+            ElevatedButton(
+              onPressed: () => searchPost(textSearch.text),
+              child: const Text('Cari'),
+            ),
           ],
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          itemCount: listPosts.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text(listPosts[index].title!),
+              subtitle: Text(listPosts[index].body!),
+            );
+          },
         )
       ]),
     );
