@@ -1,17 +1,17 @@
 class Post {
-  String id;
+  String? id;
   String? title;
   String? body;
 
   Post({
-    required this.id,
+    this.id,
     this.title,
     this.body,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
-      id: json['id'],
+      id: json['id'].toString(),
       title: json['title'],
       body: json['body'],
     );

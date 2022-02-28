@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:searchapp/models/post.dart';
-import 'package:searchapp/repo/post_repo.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:searchapp/cubits/post/post_cubit.dart';
+import 'package:searchapp/cubits/post/post_state.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,66 +32,128 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   const MyHomePage({Key? key}) : super(key: key);
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  final PostRepo _postRepo = PostRepo();
-  late TextEditingController textSearch;
-  List<Post> listPosts = [];
-  List<Post> listPostsTemp = [];
-
-  @override
-  void initState() {
-    initValue();
-    super.initState();
-  }
-
-  void initValue() async {
-    textSearch = TextEditingController();
-    listPosts = await _postRepo.getPosts();
-  }
-
-  void searchPost(String id) async {
-    listPostsTemp = await _postRepo.getPosts(id: id);
-    setState(() {
-      listPosts.clear();
-      listPosts = listPostsTemp;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Aplikasi Searching")),
-      body: Column(children: [
+      body: BlocProvider(
+        create: (_) => PostCubit(),
+        child: const PostPage(),
+      ),
+    );
+  }
+}
+
+class PostPage extends StatefulWidget {
+  const PostPage({Key? key}) : super(key: key);
+
+  @override
+  _PostPageState createState() => _PostPageState();
+}
+
+class _PostPageState extends State<PostPage> {
+  late TextEditingController textSearch;
+  late PostCubit _postCubit;
+
+  @override
+  void initState() {
+    textSearch = TextEditingController();
+    _postCubit = BlocProvider.of<PostCubit>(context);
+    _postCubit.getPostsList();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
         Row(
           children: [
-            TextFormField(
-              controller: textSearch,
-              decoration: const InputDecoration(hintText: "Search"),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: TextFormField(
+                  keyboardType: TextInputType.number,
+                  controller: textSearch,
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () => searchPost(textSearch.text),
-              child: const Text('Cari'),
+            SizedBox(
+              width: 100,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    _postCubit.getPost(id: textSearch.text);
+                  },
+                  child: const Text("Cari"),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 100,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    _postCubit.getPostsList();
+                  },
+                  child: const Text("Reset"),
+                ),
+              ),
             ),
           ],
         ),
-        ListView.builder(
-          shrinkWrap: true,
-          itemCount: listPosts.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: Text(listPosts[index].title!),
-              subtitle: Text(listPosts[index].body!),
-            );
-          },
+        Expanded(
+          child: BlocBuilder<PostCubit, PostState>(
+            builder: (context, state) {
+              if (state is PostLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.green,
+                  ),
+                );
+              }
+              if (state is PostsListLoaded) {
+                return state.listPost.isEmpty
+                    ? const Center(
+                        child: Text('No Posts'),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: state.listPost.length,
+                        itemBuilder: (context, index) {
+                          return Card(
+                            child: ListTile(
+                              title: Text(state.listPost[index].title!),
+                              subtitle: Text(state.listPost[index].body!),
+                            ),
+                          );
+                        },
+                      );
+              }
+              if (state is PostErrorLoaded) {
+                return const Center(
+                  child: Text('Terjadi Kesalahan'),
+                );
+              }
+              if (state is PostLoaded) {
+                return Card(
+                  child: ListTile(
+                    title: Text(state.post.title!),
+                    subtitle: Text(state.post.body!),
+                  ),
+                );
+              } else {
+                return Container();
+              }
+            },
+          ),
         )
-      ]),
+      ],
     );
   }
 }
